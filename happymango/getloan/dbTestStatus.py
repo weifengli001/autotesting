@@ -5,13 +5,15 @@ import getopt
 import datetime
 import csv
 import MySQLdb as mdb
-
+"""
 applications = {475 : {"status" : "hold", "sRecommendation" : 'hold'},
                 474 : {"status" : "review", "sRecommendation" : 'decline'},
                 431 : {"status" : "review", "sRecommendation" : 'decline'},
                 430 : {"status" : "review", "sRecommendation" : 'counter'},
                 393 : {"status" : "review", "sRecommendation" : 'approve'}
                 }
+"""
+applications ={}
 sqlstr_format = """
 SELECT
   cust.iId custid, cust.sEmail email, info.sFname first, info.sLname last,
@@ -39,7 +41,7 @@ WHERE app.iId IN (%s)
 """
 
 def runQuery(conn, appids):
-    global applications
+    #global applications
     #
     # Use a cursor that allows access to the DB result using Python dictionary.
     #
@@ -57,10 +59,22 @@ def runQuery(conn, appids):
     #
     for row in rows:
         print "cust id = %d, app id = %d, app status = '%s', app review status = '%s', app Recommendation status = '%s'" % (row['custid'], row['id'], row['status'], row['review_status'], row['sRecommendation'])
-        application = applications[row['id']]
+        application = applications[str(row['id'])]
         assert(application["status"] == row['status']), "status error!"
         assert(application["sRecommendation"] == row['sRecommendation']), "sRecommendation error!"
     cur.close()
+
+def getappids(filename):
+    f = open(filename, 'r')
+    for line in f.readlines():
+        line = line.strip()
+        parts = line.split(",")
+        x ={}
+        applications[parts[0]] = x
+        for i in range(1, len(parts)):
+            x.update({key:value for key, value in ([parts[i].split('=')])})
+    return applications.keys()
+    #return [int(appid) for appid in applications.keys()]
 
 def main(argv):
     user = 'weifengli'
@@ -81,10 +95,13 @@ def main(argv):
         sys.stderr.write("password not given")
         return 1
     if len(args) == 0:
-        sys.stderr.write("usage: dbsample.py [-U user] [-P password] [-D database] [-p port] appid ...\n")
+        sys.stderr.write("usage: dbsample.py [-U user] [-P password] [-D database] [-p port] filename ...\n")
         return 1
     conn = mdb.connect('127.0.0.1', user, password, database, port)
-    runQuery(conn, args)
+    appids = getappids(args[0])
+    print appids
+    runQuery(conn, appids)
+
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
